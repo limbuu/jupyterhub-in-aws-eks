@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+# metadata contains the labels
+metadata:
+  namespace: default
+  name: jupyterhub-deployment
+  labels:
+      app: jupyterhub  # this label is used by the serivce
+# sepcification contains the selectors
+spec:
+  replicas: 1
+  # match all the labels of pods
+  selector:
+    matchLabels:
+      app: jupyterhub
+  # template = blueprint for the pods
+  template:
+      # specification of codehub pod with its own metadata and spec
+    metadata:
+      labels:
+        app: jupyterhub  # this label is used by the service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: jupyterhub-image
+          image: <aws-projectid>.dkr.ecr.<us-region-xyz>.amazonaws.com/jupyterhub # automatically attaches image with latest tag
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: application-config
+          resources:
+           limits:
+             memory: "1000Mi"
+             cpu: "1000m"
+           requests:
+             memory: "100Mi"
+             cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyterhub-service
+  namespace: default
+spec:
+  selector:
+    app: jupyterhub  # deployment and pod labels
+  ports:
+  - port: 8000
+    protocol: TCP
+    targetPort: 8000 # port in which the container codehub is running on
+  type: LoadBalancer

@@ -1,0 +1,26 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: <cluster-name>
+  region: <us-region-xyz>
+  version: '1.17'
+
+vpc:
+  id: <vpc-xyz>
+  cidr: "<cidr-value>"
+  subnets:
+     public:
+       <us-region-xyz>:
+         id: <subnet-xyz>
+       <us-region-xyz>:
+         id: <subnet-xyz>
+    
+nodeGroups:
+  - name: ng-medium-mtype
+    instanceType: t3.medium
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 10
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["*"]
