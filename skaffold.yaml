@@ -1,0 +1,20 @@
+apiVersion: skaffold/v2beta3
+kind: Config
+metadata:
+  name: rubicon-jupyterhub-skaffold
+build:  # default config for minikube
+  local: {}
+  tagPolicy:
+    sha256: {} # automatically tags latest with sha256 hash
+  artifacts:
+  - image: <aws-projectid>.dkr.ecr.<us-region-xyz>.amazonaws.com/jupyterhub
+    context: ./jupyterhub/  #automatically tracks dockerfile to build image
+portForward:
+- resourceType: service
+  resourceName: rubicon-jupyterhub-service
+  port: 8000
+  localPort: 9000
+deploy:
+  kubectl:
+    manifests:
+      - ./eks-deploy/jupyterhub-mainfest.yaml
