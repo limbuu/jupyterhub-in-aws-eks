@@ -1,0 +1,3 @@
+# comment the python environments
+.vscode
+.jupyterhub/rb_jupyterhub
