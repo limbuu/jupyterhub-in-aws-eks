@@ -1,0 +1,84 @@
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: nfs-deployment
+spec:
+  replicas: 1
+  selector: 
+    matchLabels: 
+      app: nfs
+  template: 
+    metadata: 
+      labels: 
+        app: nfs
+    spec: 
+      containers: 
+        - 
+          image: "gcr.io/google_containers/volume-nfs:0.8"
+          name: nfs-server
+          ports: 
+            - 
+              containerPort: 2049
+              name: nfs
+            - 
+              containerPort: 20048
+              name: mountd
+            - 
+              containerPort: 111
+              name: rpcbind
+          securityContext: 
+            privileged: true
+          volumeMounts: 
+            - 
+              mountPath: /exports
+              name: nfs-pvc
+      volumes: 
+        - 
+          name: nfs-pvc
+          persistentVolumeClaim: 
+            claimName: nfs-pvc-claim
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nfs-service
+  labels:
+    app: nfs
+spec:
+  selector:
+    app: nfs
+  ports:
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: fabric8-rbac
+subjects:
+  - kind: ServiceAccount
+    # Reference to upper's `metadata.name`
+    name: default
+    # Reference to upper's `metadata.namespace`
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc-claim
+spec:
+  accessModes: 
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi

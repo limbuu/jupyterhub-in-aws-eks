@@ -1,0 +1,41 @@
+  apiVersion: v1
+  kind: ConfigMap
+  data:
+    #AWSCognito Configuration
+    OAUTH2_AUTHORIZE_URL: https://rubicon-hub.auth.us-west-2.amazoncognito.com/oauth2/authorize
+    OAUTH2_TOKEN_URL: https://rubicon-hub.auth.us-west-2.amazoncognito.com/oauth2/token 
+    OAUTH2_USERDATA_URL: https://rubicon-hub.auth.us-west-2.amazoncognito.com/oauth2/userInfo 
+
+    AWS_COGNITO_CLIENT_ID: 'cognito-client-id'
+    AWS_COGNITO_CLIENT_SECRET: 'cognito-client-secret'
+    AWS_COGNITO_LOGIN_SERVICE: 'name-of-service'
+    AWS_COGNITO_OAUTH_CALLBACK_URL: http://localhost:9000/hub/oauth_callback
+
+    AWS_COGNITO_REGION: 'aws-region'
+    AWS_COGNITO_USERPOOL_ID: 'cognito-userpool-id' 
+
+    #ENV file for configmaps
+    ENVIRONMENT: local
+
+    #MYSQL Configration
+    MYSQL_DATABASE: 'database-name'
+    MYSQL_ROOT_USER: 'root-user'
+    MYSQL_ROOT_PASSWORD: 'root-password'
+    DB_URL: mysql+pymysql://{MYSQL_ROOT_USER}:{MYSQL_ROOT_PASSWORD}@mysql-service:3306/{MYSQL_DATABASE}
+
+    #Auth0 Configuration
+    AUTH0_SUBDOMAIN: 'auth0-subdomain'
+    AUTH0_API_EXPLORER_CLIENT_ID: 'auth0-api-explorer-client-id'
+    AUTH0_API_EXPLORER_CLIENT_SECRET: 'auth0-api-explorer-client-secret'
+    AUTH0_API_EXPLORER_AUDIENCE: 'auth0-api-explorer-audience'
+  metadata:
+    name: application-config
+    namespace: default
+
+
+
+
+
+
+
+

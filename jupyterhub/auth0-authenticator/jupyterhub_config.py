@@ -20,211 +20,107 @@ from jose import jwk, jwt
 from jose.utils import base64url_decode
 import os
 
-## AWS Cognito Configuration
-class Custom_Cognito_Authenticator(GenericOAuthenticator):
-    @staticmethod
-    def id_token_decoder(id_token):
-        token = id_token
-        region = os.environ['AWS_COGNITO_REGION']
-        userpool_id = os.environ['AWS_COGNITO_USERPOOL_ID']
-        app_client_id = os.environ['AWS_COGNITO_CLIENT_ID']
-        keys_url = 'https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json'.format(region, userpool_id)
-        # instead of re-downloading the public keys every time
-        # we download them only on cold start
-        # https://aws.amazon.com/blogs/compute/container-reuse-in-lambda/
-        with urllib.request.urlopen(keys_url) as f:
-            response = f.read()
-        keys = json.loads(response.decode('utf-8'))['keys']
-        # get the kid from the headers prior to verification
-        headers = jwt.get_unverified_headers(token)
-        kid = headers['kid']
-        # search for the kid in the downloaded public keys
-        key_index = -1
-        for i in range(len(keys)):
-            if kid == keys[i]['kid']:
-                key_index = i
-                break
-        if key_index == -1:
-            print('Public key not found in jwks.json')
-            return False
-        # construct the public key
-        public_key = jwk.construct(keys[key_index])
-        # get the last two sections of the token,
-        # message and signature (encoded in base64)
-        message, encoded_signature = str(token).rsplit('.', 1)
-        # decode the signature
-        decoded_signature = base64url_decode(encoded_signature.encode('utf-8'))
-        # verify the signature
-        if not public_key.verify(message.encode("utf8"), decoded_signature):
-            print('Signature verification failed')
-            return False
-        print('Signature successfully verified')
-        # since we passed the verification, we can now safely
-        # use the unverified claims
-        claims = jwt.get_unverified_claims(token)
-        # additionally we can verify the token expiration
-        if time.time() > claims['exp']:
-            print('Token is expired')
-            return False
-        # and the Audience  (use claims['client_id'] if verifying an access token)
-        if claims['aud'] != app_client_id:
-            print('Token was not issued for this audience')
-            return False
-        # now we can use the claims
-        print("****************************************************")
-        print(claims)
-        global list_of_roles
-        list_of_roles = []
-        if 'cognito:groups' in claims:
-            list_of_roles.append(claims['cognito:groups'])
-        return claims
+#Custom Authenticator
+class CustomAuth0LoginHandler(Auth0LoginHandler):
+    AUTH0_SUBDOMAIN = os.environ['AUTH0_SUBDOMAIN']
+    _OAUTH_AUTHORIZE_URL = "https://%s/authorize" % AUTH0_SUBDOMAIN
+    _OAUTH_ACCESS_TOKEN_URL = "https://%s/oauth/token" % AUTH0_SUBDOMAIN
+
+class CustomAuthenticator(Auth0OAuthenticator):
+    login_handler = CustomAuth0LoginHandler
 
     @gen.coroutine
     def authenticate(self, handler, data=None):
+        AUTH0_SUBDOMAIN = os.environ['AUTH0_SUBDOMAIN']
         code = handler.get_argument("code")
-        # TODO: Configure the curl_httpclient for tornado
         http_client = AsyncHTTPClient()
-
-        params = dict(
-            redirect_uri=self.get_callback_url(handler),
-            code=code,
-            grant_type='authorization_code'
-        )
-        params.update(self.extra_params)
-
-        if self.token_url:
-            url = self.token_url
-        else:
-            raise ValueError("Please set the OAUTH2_TOKEN_URL environment variable")
-
-        b64key = base64.b64encode(
-            bytes(
-                "{}:{}".format(self.client_id, self.client_secret),
-                "utf8"
-            )
-        )
-
-        headers = {
-            "Accept": "application/json",
-            "User-Agent": "JupyterHub",
-            "Authorization": "Basic {}".format(b64key.decode("utf8"))
+        params = {
+            'grant_type': 'authorization_code',
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'code': code,
+            'redirect_uri': self.get_callback_url(handler)
         }
+        url = "https://%s/oauth/token" % AUTH0_SUBDOMAIN
+
         req = HTTPRequest(url,
                           method="POST",
-                          headers=headers,
-                          validate_cert=self.tls_verify,
-                          body=urllib.parse.urlencode(params)  # Body is required for a POST...
+                          headers={"Content-Type": "application/json"},
+                          body=json.dumps(params)
                           )
 
         resp = yield http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-        self.log.info("######################################")
-        self.log.info(resp_json)
 
         access_token = resp_json['access_token']
-        refresh_token = resp_json.get('refresh_token', None)
-        token_type = resp_json['token_type']
-        id_token = resp_json['id_token']
-        ########
-        self.id_token_decoder(id_token)                                                                                                                  
-        ########
-        scope = resp_json.get('scope', '')
-        if (isinstance(scope, str)):
-                scope = scope.split(' ')        
 
         # Determine who the logged in user is
-        headers = {
-            "Accept": "application/json",
-            "User-Agent": "JupyterHub",
-            "Authorization": "{} {}".format(token_type, access_token)
-        }
-        if self.userdata_url:
-            url = url_concat(self.userdata_url, self.userdata_params)
-            self.log.info("%%%%%%%%%%%%%%%%%%%%%%%%")
-            self.log.info(url)
-        else:
-            raise ValueError("Please set the OAUTH2_USERDATA_URL environment variable")
+        headers = {"Accept": "application/json",
+                   "User-Agent": "JupyterHub",
+                   "Authorization": "Bearer {}".format(access_token)
+                   }
 
-        req = HTTPRequest(url,
-                          method=self.userdata_method,
-                          headers=headers,
-                          validate_cert=self.tls_verify,
+        req = HTTPRequest("https://%s/userinfo" % AUTH0_SUBDOMAIN,
+                          method="GET",
+                          headers=headers
                           )
         resp = yield http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-        self.log.info(resp_json)
 
-        if not resp_json.get(self.username_key):
-            self.log.error("OAuth user contains no key %s: %s", self.username_key, resp_json)
-            return
-        self.log.info(resp_json)
-       
         return {
-            'name': resp_json.get(self.username_key),
+            'name': resp_json["email"],
             'auth_state': {
                 'access_token': access_token,
-                'refresh_token': refresh_token,
-                'oauth_user': resp_json,
-                'scope': scope,
+                'auth0_user': resp_json,
             }
         }
-    
-c.JupyterHub.authenticator_class = Custom_Cognito_Authenticator
-c.OAuthenticator.client_id = os.environ['AWS_COGNITO_CLIENT_ID']
-c.OAuthenticator.client_secret = os.environ['AWS_COGNITO_CLIENT_SECRET'] 
-c.OAuthenticator.login_service = os.environ['AWS_COGNITO_LOGIN_SERVICE'] 
-c.OAuthenticator.oauth_callback_url = os.environ['AWS_COGNITO_OAUTH_CALLBACK_URL']
 
-c.Authenticator.allowed_users = {'iammanshi116@gmail.com', 'abcd@gmail.com'}
-c.Authenticator.admin_users = {'iammanshi116@gmail.com'}
-
-## Custom Kubespawner
-class Custon_KubeSpawner(KubeSpawner):
+class CustomSpawner(KubeSpawner):
     @gen.coroutine
     def _start(self):
         """Start the user's pod"""
+       # Get auth0 API Explorer token of accounts-fuse-ai
+        url = "https://%s/oauth/token" % os.environ['AUTH0_SUBDOMAIN']
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': os.environ['AUTH0_API_EXPLORER_CLIENT_ID'],
+            'client_secret': os.environ['AUTH0_API_EXPLORER_CLIENT_SECRET'],
+            'audience': os.environ['AUTH0_API_EXPLORER_AUDIENCE'],
+        }
 
-        # load user options (including profile)
-        yield self.load_user_options()
+        r = requests.post(url, data)
+        access_token = json.loads(r.text)[u'access_token']
 
-        ## load roles
-        self.log.info("******************************")
-        self.log.info(list_of_roles)
-        roles = []
-        if len(list_of_roles)> 0 :
-            roles = list_of_roles[0]
-        else:
-            roles = ['RECENTLY_SIGNED']
-        self.log.info(roles)
+        # Get user data from auth0
+        url = "https://%s/api/v2/users-by-email?email=" % os.environ['AUTH0_SUBDOMAIN'] + self.user.name
+        r = requests.get(url, headers={"Authorization": "bearer " + access_token})
+        user = json.loads(r.text)[0]
+
         # custom volume mount path 
         admin_volume_path = [{'mountPath': '/home/jovyan/work/',
                 'name': 'persistent-storage',
-                'subPath': 'home-folder'}]
+                'subPath': 'rubicon-folder'}]
         student_engine_volume_path = [{'mountPath': '/home/jovyan/work/',
                 'name': 'persistent-storage',
-                'subPath': 'home-folder/pyspark-engine'}]
+                'subPath': 'rubicon-folder/student-engine'}]
         recommendation_engine_volume_path = [{'mountPath': '/home/jovyan/work/',
                 'name': 'persistent-storage',
-                'subPath': 'home-folder/scipy-engine'}]
+                'subPath': 'rubicon-folder/recommendation-engine'}]
 
-        if ("ADMIN" in roles):
+        # Assign image according to user's role
+        if ("ADMIN" in user[u'app_metadata'][u'authorities']):
             self.image = 'jupyter/base-notebook:latest'
             self.volume_mounts = admin_volume_path
-        elif ("PYSPARK_RUNTIME_USER" in roles):
+        elif ("PYSPARK_RUNTIME_USER" in user[u'app_metadata'][u'authorities']):
             self.image = 'jupyter/pyspark-notebook:latest'
             self.volume_mounts = student_engine_volume_path
-        elif ("SCIPY_RUNTIME_USER" in roles):
+        elif ("SCIPY_RUNTIME_USER" in user[u'app_metadata'][u'authorities']):
             self.image = 'jupyter/scipy-notebook:latest'
             self.volume_mounts = student_engine_volume_path
         else:
             # spawn a normal notebook only
             self.image = 'jupyter/base-notebook:latest'
 
-        # record latest event so we don't include old
-        # events from previous pods in self.events
-        # track by order and name instead of uid
-        # so we get events like deletion of a previously stale
-        # pod if it's part of this spawn process
         events = self.events
         if events:
             self._last_event = events[-1].metadata.uid
@@ -328,15 +224,21 @@ class Custon_KubeSpawner(KubeSpawner):
                 self.pod_name,
                 "\n".join(
                     [
-                        "%s [%s] %s" % (event.last_timestamp or event.event_time, event.type, event.message)
+                        "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
                         for event in self.events
-                    ]
+                        ]
                 ),
             )
         return (pod.status.pod_ip, self.port)
 
-c.JupyterHub.spawner_class = Custon_KubeSpawner
+c.Authenticator.allowed_users = {'iammanshi116@gmail.com', 'abcd@gmail.com'}
+c.Authenticator.admin_users = {'iammanshi116@gmail.com'}
 
+c.JupyterHub.spawner_class = CustomSpawner
+c.JupyterHub.authenticator_class = CustomAuthenticator
+c.Auth0OAuthenticator.scope = ['openid','email']
+c.Authenticator.auto_login = True
+c.Authenticator.whitelist = whitelist = set()
 c.JupyterHub.ip = '0.0.0.0'
 c.JupyterHub.hub_ip = '0.0.0.0'
 c.Spawner.http_timeout = 60 * 5

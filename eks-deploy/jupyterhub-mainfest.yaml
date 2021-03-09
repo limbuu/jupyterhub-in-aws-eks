@@ -23,7 +23,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: jupyterhub-image
-          image: <aws-projectid>.dkr.ecr.<us-region-xyz>.amazonaws.com/jupyterhub # automatically attaches image with latest tag
+          image: aws_account_id.dkr.ecr.region.amazonaws.com/jupyterhub # automatically attaches image with latest tag
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
