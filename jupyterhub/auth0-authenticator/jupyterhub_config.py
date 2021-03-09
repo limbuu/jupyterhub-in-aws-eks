@@ -99,13 +99,13 @@ class CustomSpawner(KubeSpawner):
         # custom volume mount path 
         admin_volume_path = [{'mountPath': '/home/jovyan/work/',
                 'name': 'persistent-storage',
-                'subPath': 'rubicon-folder'}]
+                'subPath': 'home-folder'}]
         student_engine_volume_path = [{'mountPath': '/home/jovyan/work/',
                 'name': 'persistent-storage',
-                'subPath': 'rubicon-folder/student-engine'}]
+                'subPath': 'home-folder/pyspark-engine'}]
         recommendation_engine_volume_path = [{'mountPath': '/home/jovyan/work/',
                 'name': 'persistent-storage',
-                'subPath': 'rubicon-folder/recommendation-engine'}]
+                'subPath': 'home-folder/scipy-engine'}]
 
         # Assign image according to user's role
         if ("ADMIN" in user[u'app_metadata'][u'authorities']):

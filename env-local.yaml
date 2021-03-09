@@ -2,9 +2,9 @@
   kind: ConfigMap
   data:
     #AWSCognito Configuration
-    OAUTH2_AUTHORIZE_URL: https://rubicon-hub.auth.us-west-2.amazoncognito.com/oauth2/authorize
-    OAUTH2_TOKEN_URL: https://rubicon-hub.auth.us-west-2.amazoncognito.com/oauth2/token 
-    OAUTH2_USERDATA_URL: https://rubicon-hub.auth.us-west-2.amazoncognito.com/oauth2/userInfo 
+    OAUTH2_AUTHORIZE_URL: https://cognito-dns-name.auth.aws-region.amazoncognito.com/oauth2/authorize
+    OAUTH2_TOKEN_URL: https://cognito-dns-name.auth.aws-region.amazoncognito.com/oauth2/token 
+    OAUTH2_USERDATA_URL: https://cognito-dns-name.auth.aws-region.amazoncognito.com/oauth2/userInfo 
 
     AWS_COGNITO_CLIENT_ID: 'cognito-client-id'
     AWS_COGNITO_CLIENT_SECRET: 'cognito-client-secret'
