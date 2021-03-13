@@ -52,7 +52,7 @@ Jupyterhub needs a database to persist users, hub and notebook information and a
 
 Therefore, for database we use `mysql` and `nfs` as local network file system. Also, we use `kubernetes configmap` as secret to add environment variables and mount it to `jupyterhub deployment`. We run a `bash script` to do all these prerequsite deployments including `jupyterhub deployment`.
 ```
-$ chmod +x minikube-setup.sh
+$ chmod +x eks-setup.sh
 $ ./eks-setup.sh
 ```
 
