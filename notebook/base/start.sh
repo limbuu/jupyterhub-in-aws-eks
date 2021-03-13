@@ -41,22 +41,22 @@ run-hooks /usr/local/bin/start-notebook.d
 # Handle special flags if we're root
 if [ $(id -u) == 0 ] ; then
 
-    # Only attempt to change the fusemachines username if it exists
-    if id fusemachines &> /dev/null ; then
+    # Only attempt to change the myuser username if it exists
+    if id myuser &> /dev/null ; then
         echo "Set username to: $NB_USER"
-        usermod -d /home/$NB_USER -l $NB_USER fusemachines
+        usermod -d /home/$NB_USER -l $NB_USER myuser
     fi
 
     # handle home and working directory if the username changed
-    if [[ "$NB_USER" != "fusemachines" ]]; then
+    if [[ "$NB_USER" != "myuser" ]]; then
         # changing username, make sure homedir exists
         # (it could be mounted, and we shouldn't create it if it already exists)
         if [[ ! -e "/home/$NB_USER" ]]; then
             echo "Relocating home dir to /home/$NB_USER"
-            mv /home/fusemachines "/home/$NB_USER" || ln -s /home/fusemachines "/home/$NB_USER"
+            mv /home/myuser "/home/$NB_USER" || ln -s /home/myuser "/home/$NB_USER"
         fi
-        # if workdir is in /home/fusemachines, cd to /home/$NB_USER
-        if [[ "$PWD/" == "/home/fusemachines/"* ]]; then
+        # if workdir is in /home/myuser, cd to /home/$NB_USER
+        if [[ "$PWD/" == "/home/myuser/"* ]]; then
             newcwd="/home/$NB_USER/${PWD:13}"
             echo "Setting CWD to $newcwd"
             cd "$newcwd"
@@ -101,7 +101,7 @@ if [ $(id -u) == 0 ] ; then
     echo "Executing the command: ${cmd[@]}"
     exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=/home/$NB_USER/.cache PYTHONPATH=${PYTHONPATH:-} "${cmd[@]}"
 else
-    if [[ "$NB_UID" == "$(id -u fusemachines 2>/dev/null)" && "$NB_GID" == "$(id -g fusemachines 2>/dev/null)" ]]; then
+    if [[ "$NB_UID" == "$(id -u myuser 2>/dev/null)" && "$NB_GID" == "$(id -g myuser 2>/dev/null)" ]]; then
         # User is not attempting to override user/group via environment
         # variables, but they could still have overridden the uid/gid that
         # container runs as. Check that the user has an entry in the passwd
@@ -110,8 +110,8 @@ else
         if [[ "$STATUS" != "0" ]]; then
             if [[ -w /etc/passwd ]]; then
                 echo "Adding passwd file entry for $(id -u)"
-                # cat /etc/passwd | sed -e "s/^fusemachines:/nayvoj:/" > /tmp/passwd
-                # echo "fusemachines:x:$(id -u):$(id -g):,,,:/home/fusemachines:/bin/bash" >> /tmp/passwd
+                # cat /etc/passwd | sed -e "s/^myuser:/nayvoj:/" > /tmp/passwd
+                # echo "myuser:x:$(id -u):$(id -g):,,,:/home/myuser:/bin/bash" >> /tmp/passwd
                 # cat /tmp/passwd > /etc/passwd
                 # rm /tmp/passwd
             else
@@ -120,7 +120,7 @@ else
         fi
 
         # Warn if the user isn't going to be able to write files to $HOME.
-        if [[ ! -w /home/fusemachines ]]; then
+        if [[ ! -w /home/myuser ]]; then
             echo 'Container must be run with group "users" to update files'
         fi
     else

@@ -16,7 +16,7 @@ RUN useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
     chmod g+w /etc/passwd && \
     echo "$NB_USER:$PASSWORD" | /usr/sbin/chpasswd
     
-## changed start.sh script to use fusemachines as user
+## changed start.sh script to use myuser as user
 ADD ./start.sh /usr/local/bin/start.sh
 RUN  chmod +x /usr/local/bin/start.sh
 RUN mkdir -p "$HOME/work" && \
