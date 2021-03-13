@@ -197,24 +197,30 @@ class Custon_KubeSpawner(KubeSpawner):
             roles = ['RECENTLY_SIGNED']
         self.log.info(roles)
         # custom volume mount path 
-        admin_volume_path = [{'mountPath': '/home/jovyan/work/',
+        admin_volume_path = [{'mountPath': '/home/myuser/work/',
                 'name': 'persistent-storage',
                 'subPath': 'home-folder'}]
-        student_engine_volume_path = [{'mountPath': '/home/jovyan/work/',
+        student_engine_volume_path = [{'mountPath': '/home/myuser/work/',
                 'name': 'persistent-storage',
                 'subPath': 'home-folder/pyspark-engine'}]
-        recommendation_engine_volume_path = [{'mountPath': '/home/jovyan/work/',
+        recommendation_engine_volume_path = [{'mountPath': '/home/myuser/work/',
                 'name': 'persistent-storage',
                 'subPath': 'home-folder/scipy-engine'}]
+        analytics_engine_volume_path = [{'mountPath': '/home/myuser/work/',
+                'name': 'persistent-storage',
+                'subPath': 'home-folder/datascience-engine'}]
 
         if ("ADMIN" in roles):
-            self.image = 'jupyter/base-notebook:latest'
+            self.image = 'aws_account_id.dkr.ecr.region.amazonaws.com/datascience-notebook:latest'
             self.volume_mounts = admin_volume_path
         elif ("PYSPARK_RUNTIME_USER" in roles):
-            self.image = 'jupyter/pyspark-notebook:latest'
+            self.image = 'aws_account_id.dkr.ecr.region.amazonaws.com/pyspark-notebook:latest'
             self.volume_mounts = student_engine_volume_path
         elif ("SCIPY_RUNTIME_USER" in roles):
-            self.image = 'jupyter/scipy-notebook:latest'
+            self.image = 'aws_account_id.dkr.ecr.region.amazonaws.com/scipy-notebook:latest'
+            self.volume_mounts = student_engine_volume_path
+        elif ("DATASCIENCE_RUNTIME_USER" in roles):
+            self.image = 'aws_account_id.dkr.ecr.region.amazonaws.com/scipy-notebook:latest'
             self.volume_mounts = student_engine_volume_path
         else:
             # spawn a normal notebook only
